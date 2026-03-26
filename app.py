@@ -3,46 +3,98 @@ import streamlit as st
 from pipeline.transcribe import transcribe
 from pipeline.summarize import ask_llm
 
-st.title("🎥 Local Video AI Analyzer")
+# -------------------------------
+# UI Title
+# -------------------------------
+st.title("🎥 VidInsight AI — Offline Video Intelligence System")
 
+# -------------------------------
+# Ensure folders exist
+# -------------------------------
 video_dir = "data/videos"
 os.makedirs(video_dir, exist_ok=True)
 
-uploaded_file = st.file_uploader(
-    "Upload Video",
-    type=["mp4", "mkv", "avi", "mov", "ts"]
+# -------------------------------
+# Multi File Upload
+# -------------------------------
+uploaded_files = st.file_uploader(
+    "Upload Videos",
+    type=["mp4", "mkv", "avi", "mov", "ts"],
+    accept_multiple_files=True
 )
 
-if uploaded_file:
-    # ✅ Keep original extension
-    file_extension = uploaded_file.name.split(".")[-1]
-    video_path = os.path.join(video_dir, f"temp.{file_extension}")
+# -------------------------------
+# Save Uploaded Files
+# -------------------------------
+saved_paths = []
 
-    # ✅ Save correctly
-    with open(video_path, "wb") as f:
-        f.write(uploaded_file.getbuffer())
+if uploaded_files:
+    for file in uploaded_files:
+        file_path = os.path.join(video_dir, file.name)
 
-    st.success("Video uploaded!")
+        with open(file_path, "wb") as f:
+            f.write(file.getbuffer())
 
-    if st.button("Process Video"):
-        with st.spinner("Transcribing..."): 
-            text = transcribe(video_path)   # ✅ FIX HERE
+        saved_paths.append(file_path)
 
-        st.text_area("Transcript", text, height=200)
+    st.success(f"✅ {len(saved_paths)} video(s) uploaded successfully!")
 
-        prompt = f"""
-        Analyze this transcript and provide:
+# -------------------------------
+# Process Button
+# -------------------------------
+if saved_paths and st.button("🚀 Process All Videos"):
 
-        1. Summary
-        2. Key insights
-        3. Actionable points
+    overall_progress = st.progress(0)
+    status = st.empty()
 
-        Transcript:
-        {text}
-        """
+    try:
+        total_videos = len(saved_paths)
 
-        with st.spinner("Analyzing..."):
+        for idx, video_path in enumerate(saved_paths):
+
+            video_name = os.path.basename(video_path)
+
+            status.text(f"🎬 Processing: {video_name}")
+
+            # -------------------------------
+            # Step 1: Transcription
+            # -------------------------------
+            text = transcribe(video_path)
+
+            st.subheader(f"📄 Transcript — {video_name}")
+            st.text_area(
+                f"Transcript Output ({video_name})",
+                text,
+                height=200
+            )
+
+            # -------------------------------
+            # Step 2: LLM Analysis
+            # -------------------------------
+            prompt = f"""
+            Analyze this transcript and provide:
+
+            1. Summary
+            2. Key insights
+            3. Actionable points
+
+            Transcript:
+            {text[:5000]}
+            """
+
             output = ask_llm(prompt)
 
-        st.subheader("Insights")
-        st.write(output)
+            st.subheader(f"💡 Insights — {video_name}")
+            st.write(output)
+
+            # -------------------------------
+            # Update Progress
+            # -------------------------------
+            progress_value = int(((idx + 1) / total_videos) * 100)
+            overall_progress.progress(progress_value)
+
+        status.text("✅ All videos processed successfully!")
+
+    except Exception as e:
+        st.error(f"❌ Error occurred: {str(e)}")
+        status.text("❌ Failed")

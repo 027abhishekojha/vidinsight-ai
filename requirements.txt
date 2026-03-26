@@ -1,5 +1,9 @@
 streamlit
-openai-whisper
+faster-whisper
+torch
+torchaudio
+numpy
 ffmpeg-python
-chromadb
 requests
+chromadb
+ctranslate2

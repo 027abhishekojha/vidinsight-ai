@@ -1,0 +1,13 @@
+venv/
+__pycache__/
+*.pyc
+
+data/videos/
+data/audio/
+data/chunks/
+
+*.mp4
+*.ts
+*.mp3
+
+.env
